@@ -1,0 +1,23 @@
+# Foundry
+cache/
+out/
+
+# Node.js
+node_modules/
+yarn-error.log
+
+# Environment
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# System files
+.DS_Store
+
+# Hardhat (if used)
+artifacts/
+typechain/
+coverage/
+coverage.json

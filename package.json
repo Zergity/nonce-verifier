@@ -1,0 +1,27 @@
+{
+  "name": "nonce-verifier",
+  "version": "1.0.0",
+  "description": "A Solidity library contract that verifies an account's nonce, balance, and account state root against a given state root and Merkle proof, as well as a blockhash.",
+  "main": "src/AccountVerifier.sol",
+  "type": "module",
+  "scripts": {
+    "test": "forge test",
+    "deploy": "forge script script/Deploy.s.sol --broadcast",
+    "verify": "node test/verify-account.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "ethers": "5.7.2",
+    "node-fetch": "^3.3.2",
+    "solidity-merkle-trees": "git+https://github.com/polytope-labs/solidity-merkle-trees.git"
+  },
+  "devDependencies": {
+    "forge-std": "git+https://github.com/foundry-rs/forge-std.git"
+  },
+  "license": "MIT",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [],
+  "author": ""
+}
