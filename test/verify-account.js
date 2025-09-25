@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { ethers } from 'ethers';
-import { readFile } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 
 const TEST_ACCOUNT = '0x28c6c06298d514db089934071355e5743bf21d60'; // Binance 14 Hot Wallet
 
@@ -49,58 +49,73 @@ async function main() {
     console.log('Storage Root:', proof.storageHash);
     console.log('Code Hash:', proof.codeHash);
     
-    console.log('\nAccount Proof:');
-    console.log('Length:', proof.accountProof.length);
-    
-    // Analyze proof structure
-    console.log('\nProof Analysis:');
-    proof.accountProof.forEach((node, i) => {
-        const nodeBytes = ethers.utils.arrayify(node);
-        console.log(`\nNode ${i}:`);
-        console.log('Size:', nodeBytes.length, 'bytes');
-        
-        // First byte indicates RLP structure
-        const firstByte = nodeBytes[0];
-        if (firstByte >= 0xf8) {
-            // Long list
-            const sizeBytes = firstByte - 0xf7;
-            const contentStart = 1 + sizeBytes;
-            console.log('Type: Long list');
-            console.log('Content size bytes:', sizeBytes);
-            console.log('Content starts at:', contentStart);
-        } else if (firstByte >= 0xc0) {
-            // Short list
-            console.log('Type: Short list');
-            console.log('Content size:', firstByte - 0xc0);
-        } else if (firstByte >= 0xb8) {
-            // Long string
-            const sizeBytes = firstByte - 0xb7;
-            const contentStart = 1 + sizeBytes;
-            console.log('Type: Long string');
-            console.log('Size bytes:', sizeBytes);
-            console.log('Content starts at:', contentStart);
-        } else if (firstByte >= 0x80) {
-            // Short string
-            console.log('Type: Short string');
-            console.log('Size:', firstByte - 0x80);
-        } else {
-            console.log('Type: Single byte');
-        }
-    });
-    
-    // Verify the final proof node contains account data
-    const lastNode = proof.accountProof[proof.accountProof.length - 1];
-    const lastNodeBytes = ethers.utils.arrayify(lastNode);
-    
-    console.log('\nAccount Leaf Node Analysis:');
-    // The last node should be a list containing [path, [nonce, balance, storageRoot, codeHash]]
-    console.log('Raw:', lastNode);
-    
-    // Compare state root to the block
-    console.log('\nState Root Verification:');
-    console.log('Block State Root:', stateRoot);
-    console.log('First Proof Node:', proof.accountProof[0]);
-    console.log('State roots match:', stateRoot === proof.accountProof[0].slice(0, 66));
+    // Save test data
+    const testData = {
+        block: {
+            number: blockNumber,
+            hash: block.hash,
+            stateRoot
+        },
+        account: {
+            address: TEST_ACCOUNT,
+            nonce: parseInt(proof.nonce),
+            balance: ethers.BigNumber.from(proof.balance).toString(),
+            storageRoot: proof.storageHash,
+            codeHash: proof.codeHash
+        },
+        proof: proof.accountProof
+    };
+
+    // Create test data directory if it doesn't exist
+    await mkdir('test/data', { recursive: true });
+
+    // Save as Solidity test data
+    const solidityTest = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+library AccountProofTestData {
+    struct AccountState {
+        address account;
+        uint256 nonce;
+        uint256 balance;
+        bytes32 storageRoot;
+        bytes32 codeHash;
+    }
+
+    struct BlockState {
+        uint256 number;
+        bytes32 hash;
+        bytes32 stateRoot;
+    }
+
+    function getBlock() internal pure returns (BlockState memory) {
+        return BlockState({
+            number: ${blockNumber},
+            hash: ${block.hash},
+            stateRoot: ${stateRoot}
+        });
+    }
+
+    function getAccount() internal pure returns (AccountState memory) {
+        return AccountState({
+            account: ${TEST_ACCOUNT},
+            nonce: ${parseInt(proof.nonce)},
+            balance: ${ethers.BigNumber.from(proof.balance).toString()},
+            storageRoot: ${proof.storageHash},
+            codeHash: ${proof.codeHash}
+        });
+    }
+
+    function getProof() internal pure returns (bytes[] memory) {
+        bytes[] memory proof = new bytes[](${proof.accountProof.length});
+        ${proof.accountProof.map((node, i) => `proof[${i}] = hex"${node.slice(2)}";`).join('\n        ')}
+        return proof;
+    }
+}`;
+
+    // Write test data files
+    await writeFile('test/data/AccountProofTestData.sol', solidityTest);
+    await writeFile('test/data/account-proof.json', JSON.stringify(testData, null, 2));
 }
 
 main()

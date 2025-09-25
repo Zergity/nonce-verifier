@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "solidity-merkle-trees/trie/ethereum/RLPReader.sol";
+import "solidity-merkle-trees/MerklePatricia.sol";
+import "solidity-merkle-trees/Types.sol";
 
 interface IAccountVerifier {
     function verifyAccount(
@@ -10,8 +12,8 @@ interface IAccountVerifier {
         uint256 balance,
         bytes32 accountStateRoot,
         bytes32 stateRoot,
-        bytes32[] calldata proof
-    ) external view returns (bool);
+        bytes[] calldata proof
+    ) external pure returns (bool);
 }
 
 contract AccountVerifier is IAccountVerifier {
@@ -24,26 +26,27 @@ contract AccountVerifier is IAccountVerifier {
         uint256 balance,
         bytes32 accountStateRoot,
         bytes32 stateRoot,
-        bytes32[] calldata proof
-    ) external view override returns (bool) {
-        bytes memory path = abi.encodePacked(keccak256(abi.encodePacked(account)));
-        bytes memory node = abi.encodePacked(proof[0]);
-        RLPReader.RLPItem[] memory accountData = node.toRlpItem().toList();
+        bytes[] calldata proof
+    ) external pure override returns (bool) {
+        bytes[] memory keys = new bytes[](1);
+        keys[0] = abi.encodePacked(keccak256(abi.encodePacked(account)));
         
+        StorageValue[] memory proofs = MerklePatricia.VerifyEthereumProof(
+            stateRoot, 
+            proof, 
+            keys
+        );
+        
+        require(proofs.length == 1, "Invalid proof result length");
+        require(proofs[0].value.length > 0, "Account does not exist");
+        
+        RLPReader.RLPItem[] memory accountData = proofs[0].value.toRlpItem().toList();
         require(accountData.length == 4, "Invalid account RLP data");
         
-        uint256 actualNonce = accountData[0].toUint();
-        uint256 actualBalance = accountData[1].toUint();
-        bytes32 actualStateRoot = bytes32(accountData[2].toUint());
+        require(accountData[0].toUint() == nonce, "Nonce mismatch");
+        require(accountData[1].toUint() == balance, "Balance mismatch");
+        require(bytes32(accountData[2].toUint()) == accountStateRoot, "Storage root mismatch");
         
-        require(nonce == actualNonce, "Nonce mismatch");
-        require(balance == actualBalance, "Balance mismatch");
-        require(accountStateRoot == actualStateRoot, "State root mismatch");
-        
-        // TODO: Implement full MPT verification
-        require(keccak256(node) == stateRoot, "Invalid state root");
-        
-        return true;
         return true;
     }
 }
