@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import { ethers } from 'ethers';
 import { readFile, writeFile, mkdir } from 'fs/promises';
+import { encode } from 'rlp';
 
 const TEST_ACCOUNT = '0x28c6c06298d514db089934071355e5743bf21d60'; // Binance 14 Hot Wallet
 
@@ -31,11 +32,39 @@ async function main() {
     console.log('Block:', blockNumber);
     console.log('Account:', TEST_ACCOUNT);
     
-    // Get block data
-    const block = await fetchRPC('eth_getBlockByNumber', [blockHex, false]);
+    // Get block data with full header fields
+    const block = await fetchRPC('eth_getBlockByNumber', [blockHex, true]);
     const stateRoot = block.stateRoot;
     console.log('\nBlock State Root:', stateRoot);
     
+    // Extract block header fields (in the correct order for RLP encoding)
+    const headerFields = [
+        block.parentHash,
+        block.sha3Uncles,
+        block.miner,
+        block.stateRoot,
+        block.transactionsRoot,
+        block.receiptsRoot,
+        block.logsBloom,
+        ethers.BigNumber.from(block.difficulty).toHexString(),
+        ethers.BigNumber.from(block.number).toHexString(),
+        ethers.BigNumber.from(block.gasLimit).toHexString(),
+        ethers.BigNumber.from(block.gasUsed).toHexString(),
+        ethers.BigNumber.from(block.timestamp).toHexString(),
+        block.extraData,
+        block.mixHash,
+        block.nonce
+    ].map(hex => ethers.utils.arrayify(hex));
+
+    // RLP encode block header
+    const blockHeaderRLP = ethers.utils.hexlify(encode(headerFields));
+    console.log('\nBlock Header RLP:', blockHeaderRLP);
+
+    // Verify that the header hash matches
+    const headerHash = ethers.utils.keccak256(blockHeaderRLP);
+    console.log('\nComputed Block Hash:', headerHash);
+    console.log('Actual Block Hash:', block.hash);
+
     // Get account proof using eth_getProof
     const proof = await fetchRPC('eth_getProof', [
         TEST_ACCOUNT,
@@ -54,7 +83,8 @@ async function main() {
         block: {
             number: blockNumber,
             hash: block.hash,
-            stateRoot
+            stateRoot: block.stateRoot,
+            headerRLP: blockHeaderRLP
         },
         account: {
             address: TEST_ACCOUNT,
