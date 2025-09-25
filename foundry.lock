@@ -1,4 +1,10 @@
 {
+  "lib/account-abstraction": {
+    "branch": {
+      "name": "bare",
+      "rev": "b2814f36ed9471171f64612d9c80b4692605808b"
+    }
+  },
   "lib/openzeppelin-contracts": {
     "tag": {
       "name": "v5.4.0",
