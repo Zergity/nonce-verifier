@@ -111,11 +111,12 @@ library AccountTrie {
 
         // Verify block hash
         bytes32 recordedHash = blockhash(blockNumber);
-        if (recordedHash != blockHash) {
+        if (recordedHash == 0) {
             // If not in recent blocks, check BlockHashRecorder
             recordedHash = IBlockHashRecorder(blockHashRecorder).blockHash(blockNumber);
-            require(recordedHash == blockHash, "Invalid block hash");
+            require(recordedHash != 0, "no block hash available");
         }
+        require(recordedHash == blockHash, "block hash mismatch");
 
         // Verify account state against state root and extract nonce
         bytes memory accountRLP = verify(account, stateRoot, proof);

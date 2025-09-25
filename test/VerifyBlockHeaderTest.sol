@@ -11,7 +11,7 @@ contract VerifyBlockHeaderTest is Test {
         uint timestamp = 0x68d4cab7;
 
         // Test header RLP decoding
-        (bytes32 decodedRoot, uint decodedTimestamp) = AccountTrie.extractFromBlockHeader(header);
+        (, uint decodedTimestamp, bytes32 decodedRoot) = AccountTrie.extractFromBlockHeader(header);
         emit log_bytes32(decodedRoot);
         emit log_uint(decodedTimestamp);
         assertEq(decodedRoot, stateRoot, "state root mismatch");

@@ -13,13 +13,13 @@ contract AccountTrieTest is Test {
     function testBlockHeader() public {
         AccountProofTestData.BlockState memory blockState = AccountProofTestData.getBlock();
 
-        (bytes32 stateRoot, uint256 timestamp) = AccountTrie.extractFromBlockHeader(blockState.headerRLP);
+        (, uint256 timestamp, bytes32 stateRoot) = AccountTrie.extractFromBlockHeader(blockState.headerRLP);
         assertEq(stateRoot, blockState.stateRoot, "state root mismatch");
         emit log_bytes32(stateRoot);
         emit log_uint(timestamp);
     }
 
-    function testVerifyAccountState() public {
+    function testVerifyAccountState() public pure {
         AccountProofTestData.BlockState memory blockState = AccountProofTestData.getBlock();
         AccountProofTestData.AccountState memory account = AccountProofTestData.getAccount();
         bytes[] memory proof = AccountProofTestData.getProof();
