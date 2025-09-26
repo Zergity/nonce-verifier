@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "solidity-merkle-trees/trie/ethereum/RLPReader.sol";
-import "solidity-merkle-trees/MerklePatricia.sol";
-import "./IBlockHashRecorder.sol";
+import {RLPReader} from "solidity-merkle-trees/trie/ethereum/RLPReader.sol";
+import {MerklePatricia, StorageValue} from "solidity-merkle-trees/MerklePatricia.sol";
+import {IBlockHashRecorder} from "./IBlockHashRecorder.sol";
 
 library AccountTrie {
     using RLPReader for bytes;
@@ -11,19 +11,19 @@ library AccountTrie {
 
     /**
      * @notice Extract block number, timestamp and state root from a block header RLP
-     * @param blockHeaderRLP RLP encoded block header
+     * @param blockHeaderRlp RLP encoded block header
      * @return blockNumber The block number
      * @return timestamp The block timestamp
      * @return stateRoot The state root of the block
      */
     function extractFromBlockHeader(
-        bytes memory blockHeaderRLP
+        bytes memory blockHeaderRlp
     ) internal pure returns (
         uint256 blockNumber,
         uint256 timestamp,
         bytes32 stateRoot
     ) {
-        RLPReader.RLPItem[] memory headerFields = blockHeaderRLP.toRlpItem().toList();
+        RLPReader.RLPItem[] memory headerFields = blockHeaderRlp.toRlpItem().toList();
         require(headerFields.length >= 15, "Invalid block header");
         
         blockNumber = headerFields[8].toUint();
@@ -60,21 +60,21 @@ library AccountTrie {
 
     /**
      * @notice Decode RLP encoded account data
-     * @param accountRLP The RLP encoded account data
+     * @param accountRlp The RLP encoded account data
      * @return nonce The account nonce
      * @return balance The account balance
      * @return storageRoot The account storage root
      * @return codeHash The account code hash
      */
     function decode(
-        bytes memory accountRLP
+        bytes memory accountRlp
     ) internal pure returns (
         uint256 nonce,
         uint256 balance,
         bytes32 storageRoot,
         bytes32 codeHash
     ) {
-        RLPReader.RLPItem[] memory accountData = accountRLP.toRlpItem().toList();
+        RLPReader.RLPItem[] memory accountData = accountRlp.toRlpItem().toList();
         require(accountData.length == 4, "Invalid account RLP data");
         
         nonce = accountData[0].toUint();
@@ -86,7 +86,7 @@ library AccountTrie {
     /**
      * @notice Verify account nonce, block hash, and block timestamp
      * @param account The account address to verify
-     * @param headerRLP The RLP encoded block header
+     * @param headerRlp The RLP encoded block header
      * @param proof The merkle patricia trie proof nodes for the account
      * @param blockHashRecorder Contract that records historical block hashes
      * @return nonce The account nonce
@@ -94,7 +94,7 @@ library AccountTrie {
      */
     function verifyNonceTime(
         address account,
-        bytes memory headerRLP,
+        bytes memory headerRlp,
         bytes[] memory proof,
         address blockHashRecorder
     ) internal view returns (
@@ -104,10 +104,10 @@ library AccountTrie {
         // Extract block header fields
         bytes32 stateRoot;
         uint256 blockNumber;
-        (blockNumber, timestamp, stateRoot) = extractFromBlockHeader(headerRLP);
+        (blockNumber, timestamp, stateRoot) = extractFromBlockHeader(headerRlp);
 
         // Calculate block hash
-        bytes32 blockHash = keccak256(headerRLP);
+        bytes32 blockHash = keccak256(headerRlp);
 
         // Verify block hash
         bytes32 recordedHash = blockhash(blockNumber);
@@ -119,7 +119,7 @@ library AccountTrie {
         require(recordedHash == blockHash, "block hash mismatch");
 
         // Verify account state against state root and extract nonce
-        bytes memory accountRLP = verify(account, stateRoot, proof);
-        (nonce,,,) = decode(accountRLP);
+        bytes memory accountRlp = verify(account, stateRoot, proof);
+        (nonce,,,) = decode(accountRlp);
     }
 }

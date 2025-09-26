@@ -13,7 +13,7 @@ contract AccountTrieTest is Test {
     function testBlockHeader() public {
         AccountProofTestData.BlockState memory blockState = AccountProofTestData.getBlock();
 
-        (, uint256 timestamp, bytes32 stateRoot) = AccountTrie.extractFromBlockHeader(blockState.headerRLP);
+        (, uint256 timestamp, bytes32 stateRoot) = AccountTrie.extractFromBlockHeader(blockState.headerRlp);
         assertEq(stateRoot, blockState.stateRoot, "state root mismatch");
         emit log_bytes32(stateRoot);
         emit log_uint(timestamp);
@@ -56,14 +56,14 @@ contract AccountTrieTest is Test {
         mockRecorder.setBlockHash(blockState.number, blockState.hash);
 
         // Log block hashes for debugging
-        bytes32 calculatedHash = keccak256(blockState.headerRLP);
+        bytes32 calculatedHash = keccak256(blockState.headerRlp);
         emit log_named_bytes32("Expected block hash", blockState.hash);
         emit log_named_bytes32("Calculated block hash", calculatedHash);
 
         // Verify account nonce and block timestamp
         (uint256 nonce, uint256 timestamp) = AccountTrie.verifyNonceTime(
             account.account,
-            blockState.headerRLP,
+            blockState.headerRlp,
             proof,
             address(mockRecorder)
         );

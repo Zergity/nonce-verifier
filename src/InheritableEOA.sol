@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./AccountTrie.sol";
-import "./IBlockHashRecorder.sol";
-import "../lib/account-abstraction/contracts/core/BareAccount.sol";
+import {AccountTrie} from "./AccountTrie.sol";
+import {BareAccount} from "../lib/account-abstraction/contracts/core/BareAccount.sol";
 
 /* solhint-disable avoid-low-level-calls */
 
@@ -34,7 +33,7 @@ contract InheritableEOA is BareAccount {
     error NonceChanged();
 
     // Modifier for EOA authorization
-    modifier onlyEOA() {
+    modifier onlyEoa() {
         require(msg.sender == address(this), Unauthorized());
         _;
     }
@@ -58,18 +57,17 @@ contract InheritableEOA is BareAccount {
 
     /**
      * @dev Record nonce and timestamp for inheritance claim
-     * @param account The EOA account address (should be address(this) in EIP-7702 context)
-     * @param blockHeaderRLP RLP encoded block header
+     * @param blockHeaderRlp RLP encoded block header
      * @param proof Merkle proof for account state in block
      */
     function record(
-        bytes memory blockHeaderRLP,
+        bytes memory blockHeaderRlp,
         bytes[] memory proof
     ) public {
         // Verify block and get nonce + timestamp
         (uint256 nonce, uint256 timestamp) = AccountTrie.verifyNonceTime(
             address(this),
-            blockHeaderRLP,
+            blockHeaderRlp,
             proof,
             s_blockHashRecorder
         );
@@ -81,7 +79,11 @@ contract InheritableEOA is BareAccount {
         if (nonce == s_nonce && timestamp >= s_timestamp) {
             revert("timestamp not newer");
         }
+        // casting to 'uint64' is safe because nonce is a standard Ethereum account nonce which fits in uint64
+        // forge-lint: disable-next-line(unsafe-typecast)
         s_nonce = uint64(nonce);
+        // casting to 'uint64' is safe because timestamp is a standard Unix timestamp which fits in uint64
+        // forge-lint: disable-next-line(unsafe-typecast)
         s_timestamp = uint64(timestamp);
         
         emit NonceRecorded(s_nonce, s_timestamp);
@@ -89,12 +91,11 @@ contract InheritableEOA is BareAccount {
 
     /**
      * @dev Claim inheritance by proving nonce hasn't changed over the delay period
-     * @param account The EOA account address (should be address(this) in EIP-7702 context)
-     * @param blockHeaderRLP RLP encoded recent block header
+     * @param blockHeaderRlp RLP encoded recent block header
      * @param proof Merkle proof for account state in recent block
      */
     function claim(
-        bytes memory blockHeaderRLP,
+        bytes memory blockHeaderRlp,
         bytes[] memory proof
     ) public {
         require(s_inheritor != address(0), InvalidInheritor());
@@ -105,7 +106,7 @@ contract InheritableEOA is BareAccount {
         // Verify new block and get nonce + timestamp
         (uint256 nonce, uint256 timestamp) = AccountTrie.verifyNonceTime(
             address(this),
-            blockHeaderRLP,
+            blockHeaderRlp,
             proof,
             s_blockHashRecorder
         );
@@ -126,20 +127,19 @@ contract InheritableEOA is BareAccount {
 
     /**
      * @dev Convenience function to record and claim inheritance in one transaction
-     * @param account The EOA account address (should be address(this) in EIP-7702 context)
-     * @param oldBlockHeaderRLP RLP encoded block header from delay period ago
+     * @param oldBlockHeaderRlp RLP encoded block header from delay period ago
      * @param oldProof Merkle proof for account state in old block
-     * @param newBlockHeaderRLP RLP encoded recent block header
+     * @param newBlockHeaderRlp RLP encoded recent block header
      * @param newProof Merkle proof for account state in new block
      */
     function recordAndClaim(
-        bytes memory oldBlockHeaderRLP,
+        bytes memory oldBlockHeaderRlp,
         bytes[] memory oldProof,
-        bytes memory newBlockHeaderRLP,
+        bytes memory newBlockHeaderRlp,
         bytes[] memory newProof
     ) public {
-        record(oldBlockHeaderRLP, oldProof);
-        claim(newBlockHeaderRLP, newProof);
+        record(oldBlockHeaderRlp, oldProof);
+        claim(newBlockHeaderRlp, newProof);
     }
 
     // ============ SETTERS & GETTERS ============
@@ -150,7 +150,7 @@ contract InheritableEOA is BareAccount {
      * @param delay Time in seconds that must pass with unchanged nonce before inheritance (ignored if zero)
      * @param blockHashRecorder Address of the block hash recorder contract (ignored if zero)
      */
-    function setConfig(address inheritor, uint32 delay, address blockHashRecorder) public onlyEOA {
+    function setConfig(address inheritor, uint32 delay, address blockHashRecorder) public onlyEoa {
         if (inheritor != address(0)) {
             s_inheritor = inheritor;
         }
@@ -170,7 +170,7 @@ contract InheritableEOA is BareAccount {
      * @dev Get the block hash recorder address
      * @return The address of the block hash recorder
      */
-    function blockHashRecorder() public view returns (address) {
+    function getBlockHashRecorder() public view returns (address) {
         return s_blockHashRecorder;
     }
 
@@ -178,7 +178,7 @@ contract InheritableEOA is BareAccount {
      * @dev Get the inheritor address
      * @return The address of the inheritor
      */
-    function inheritor() public view returns (address) {
+    function getInheritor() public view returns (address) {
         return s_inheritor;
     }
 
@@ -186,7 +186,7 @@ contract InheritableEOA is BareAccount {
      * @dev Get the inheritance delay
      * @return The delay in seconds
      */
-    function delay() public view returns (uint256) {
+    function getDelay() public view returns (uint256) {
         return s_delay;
     }
 
@@ -194,7 +194,7 @@ contract InheritableEOA is BareAccount {
      * @dev Get the claimed status
      * @return True if inheritance has been claimed
      */
-    function isClaimed() public view returns (bool) {
+    function getIsClaimed() public view returns (bool) {
         return s_claimed;
     }
 }

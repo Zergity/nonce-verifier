@@ -24,11 +24,15 @@ contract InheritableEOATest is Test {
 
     function setUp() public {
         mockRecorder = new MockBlockHashRecorder();
-        inheritableEOA = new InheritableEOA(address(mockRecorder));
+        inheritableEOA = new InheritableEOA();
         mockTarget = new MockTarget();
+        
+        // Set up the block hash recorder using setConfig
+        vm.prank(address(inheritableEOA));
+        inheritableEOA.setConfig(address(0), 0, address(mockRecorder));
     }
 
-    function testConstructor() public view {
+    function testSetup() public view {
         assertEq(inheritableEOA.getBlockHashRecorder(), address(mockRecorder));
     }
 

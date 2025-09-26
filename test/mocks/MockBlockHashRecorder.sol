@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../src/IBlockHashRecorder.sol";
+import {IBlockHashRecorder} from "../../src/IBlockHashRecorder.sol";
 
 contract MockBlockHashRecorder is IBlockHashRecorder {
     mapping(uint256 => bytes32) private hashes;
